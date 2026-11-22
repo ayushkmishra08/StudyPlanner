@@ -1,4 +1,4 @@
-# StudyPlanner
+# ParkSmart (StudyPlanner)
 
 A native PHP and MySQL study planner organized with MVC. It includes account registration and login, subject management, study task and exam scheduling, and progress tracking. User data is private to each account; admins can review and manage records across accounts.
 
@@ -9,14 +9,31 @@ A native PHP and MySQL study planner organized with MVC. It includes account reg
 
 ## Run locally
 
-1. Put this folder under Laragon's `www` directory and start Apache and MySQL.
-2. For a new install, run `php setup.php` from this directory to create the database and tables from `db/schema.sql`. For the original starter database, run `db/migrations/001_add_accounts_subjects_and_task_status.sql` once instead; it retains old task rows as unassigned legacy data. Then run migrations `002_add_activity_logs.sql` and `003_add_exams.sql` once to add the activity log and exam tables.
-3. If your local database credentials differ from Laragon defaults, set `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` in the Apache/PHP environment.
-4. Create your first regular account at `http://localhost/studyplanner/signup`.
-5. To create an admin account, set `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` (12-72 characters, including uppercase and lowercase letters, a number, and a symbol) in the terminal environment, then run `php db/create_admin.php`. Admin is not selectable on public signup.
-6. Open `http://localhost/studyplanner/`.
+### Option A: One-Click Launcher (Recommended for Windows)
+Simply double-click `start.bat` or run in PowerShell:
+```powershell
+.\start.ps1
+```
+This automatically verifies MariaDB is running, runs database setup/migrations with demo data, starts the PHP server on `http://127.0.0.1:8000/`, and opens your browser.
 
-The app uses Laragon's common local defaults: `127.0.0.1:3306`, database `studyplanner`, user `root`, and an empty password. If PHP is on your terminal `PATH`, you can also run `php -S localhost:8000` from this directory and open `http://localhost:8000/`.
+### Option B: Manual Setup
+1. Ensure MySQL/MariaDB is running on `127.0.0.1:3306`.
+2. Run database setup and demo seed from this directory:
+   ```bash
+   php setup.php
+   ```
+   *(To re-seed or perform a clean install, use `php setup.php --seed` or `php setup.php --reset`)*
+3. Database credentials can be customized in `.env` (copy from `.env.example`).
+4. Start the built-in PHP server:
+   ```bash
+   php -S 127.0.0.1:8000 index.php
+   ```
+5. Open `http://127.0.0.1:8000/` in your browser.
+
+### Default Accounts Ready for Testing:
+- **Admin Account**: `admin@studyplanner.test` / `AdminPassword123!`
+- **Student Account**: `user@studyplanner.test` / `Student123!`
+*(You can also sign up with your own new account anytime)*
 
 ## MVC map
 

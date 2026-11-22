@@ -2,6 +2,13 @@
 
 declare(strict_types=1);
 
+if (PHP_SAPI === 'cli-server') {
+    $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+    if ($path !== '/' && file_exists(__DIR__ . $path)) {
+        return false;
+    }
+}
+
 session_start();
 
 require __DIR__ . '/app/helpers.php';
