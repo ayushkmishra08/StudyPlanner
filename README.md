@@ -1,4 +1,4 @@
-# ParkSmart (StudyPlanner)
+# StudyPlanner
 
 A native PHP and MySQL study planner organized with MVC. It includes account registration and login, subject management, study task and exam scheduling, and progress tracking. User data is private to each account; admins can review and manage records across accounts.
 
