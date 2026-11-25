@@ -35,10 +35,14 @@ $read = static function (string $key, string $default) use ($env): string {
     return $env[$key] ?? $default;
 };
 
+$driver = strtolower($read('DB_CONNECTION', 'mysql'));
+
 return [
+    'driver' => $driver,
     'host' => $read('DB_HOST', '127.0.0.1'),
     'port' => $read('DB_PORT', '3306'),
     'database' => $read('DB_DATABASE', 'studyplanner'),
     'username' => $read('DB_USERNAME', 'root'),
     'password' => $read('DB_PASSWORD', ''),
+    'sqlite_path' => $read('DB_SQLITE_PATH', dirname(__DIR__) . '/storage/studyplanner.sqlite'),
 ];

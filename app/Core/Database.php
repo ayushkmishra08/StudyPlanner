@@ -18,6 +18,13 @@ final class Database
         }
 
         $config = require dirname(__DIR__, 2) . '/config/database.php';
+        $driver = $config['driver'] ?? 'mysql';
+
+        // Direct SQLite connection
+        if ($driver === 'sqlite') {
+            return self::$connection = self::connectSqlite($config['sqlite_path']);
+        }
+
         $host = (string) $config['host'];
         $port = (string) $config['port'];
         $dbName = (string) $config['database'];
@@ -33,7 +40,7 @@ final class Database
                 PDO::ATTR_EMULATE_PREPARES => false,
             ]);
         } catch (PDOException $e) {
-            // Check if server refused connection (error 2002) - attempt auto-starting local MariaDB
+            // Check if server refused connection (error 2002) - attempt auto-starting local MariaDB on Windows
             if (self::isConnectionRefused($e) && self::tryStartLocalMariaDB($host, (int) $port)) {
                 try {
                     self::$connection = new PDO($dsn, $user, $pass, [
@@ -43,8 +50,14 @@ final class Database
                     ]);
                     return self::$connection;
                 } catch (PDOException) {
-                    // Fall through to error handler
+                    // Fall through
                 }
+            }
+
+            // In Linux / Docker cloud environments (like Render), if MySQL is unreachable, fallback to SQLite
+            if (self::isConnectionRefused($e) && (PHP_OS_FAMILY !== 'Windows' || getenv('RENDER') || getenv('PORT'))) {
+                error_log('MySQL connection refused. Falling back to SQLite for cloud deployment.');
+                return self::$connection = self::connectSqlite($config['sqlite_path']);
             }
 
             // Check if database doesn't exist yet (error 1049) - attempt auto-creation
@@ -57,7 +70,7 @@ final class Database
                     ]);
                     return self::$connection;
                 } catch (PDOException) {
-                    // Fall through to error handler
+                    // Fall through
                 }
             }
 
@@ -71,6 +84,40 @@ final class Database
         }
 
         return self::$connection;
+    }
+
+    private static function connectSqlite(string $sqlitePath): PDO
+    {
+        $dir = dirname($sqlitePath);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+
+        $isNew = !file_exists($sqlitePath) || filesize($sqlitePath) === 0;
+
+        $pdo = new PDO('sqlite:' . $sqlitePath, null, null, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ]);
+        $pdo->exec('PRAGMA foreign_keys = ON;');
+
+        if ($isNew) {
+            $schemaFile = dirname(__DIR__, 2) . '/db/schema_sqlite.sql';
+            if (file_exists($schemaFile)) {
+                $pdo->exec(file_get_contents($schemaFile));
+            }
+            // Auto seed
+            $seedFile = dirname(__DIR__, 2) . '/db/seed.php';
+            if (file_exists($seedFile)) {
+                require_once $seedFile;
+                if (function_exists('App\Database\seedDatabase')) {
+                    App\Database\seedDatabase();
+                }
+            }
+        }
+
+        return $pdo;
     }
 
     private static function isConnectionRefused(PDOException $e): bool
@@ -87,6 +134,10 @@ final class Database
 
     private static function tryStartLocalMariaDB(string $host, int $port): bool
     {
+        if (PHP_OS_FAMILY !== 'Windows') {
+            return false;
+        }
+
         // Only attempt for local host connections
         if (!in_array($host, ['127.0.0.1', 'localhost', '::1'], true)) {
             return false;
@@ -278,8 +329,8 @@ final class Database
                 <pre>php setup.php</pre>
             </li>
             <li>
-                <strong>Or start MariaDB manually:</strong>
-                <pre>& "C:\Program Files\MariaDB 13.0\bin\mysqld.exe" --console</pre>
+                <strong>Or set DB_CONNECTION=sqlite in .env for zero-config SQLite:</strong>
+                <pre>DB_CONNECTION=sqlite</pre>
             </li>
         </ol>
 

@@ -1,0 +1,16 @@
+{
+  "name": "studyplanner",
+  "version": "1.0.0",
+  "description": "StudyPlanner - Native PHP & MySQL / SQLite Academic Planner",
+  "private": true,
+  "scripts": {
+    "build": "echo 'StudyPlanner is a PHP application. On Render, please select Docker as the Runtime.'",
+    "start": "echo 'Please set the Render Web Service Runtime to Docker.' && exit 1"
+  },
+  "keywords": [
+    "php",
+    "studyplanner"
+  ],
+  "author": "Ayush Mishra",
+  "license": "MIT"
+}

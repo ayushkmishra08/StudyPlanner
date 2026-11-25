@@ -35,6 +35,17 @@ This automatically verifies MariaDB is running, runs database setup/migrations w
 - **Student Account**: `user@studyplanner.test` / `Student123!`
 *(You can also sign up with your own new account anytime)*
 
+## Deploy to Render (Cloud Hosting)
+
+1. Push your repository to GitHub.
+2. Go to **[dashboard.render.com](https://dashboard.render.com/)** and click **New +** > **Web Service**.
+3. Select your **StudyPlanner** GitHub repository.
+4. Set **Runtime** (or Environment) to **Docker** (Render will automatically detect the included `Dockerfile` and `render.yaml`).
+5. Click **Create Web Service**.
+6. Render builds the PHP 8.3 container, automatically sets up SQLite / MySQL, runs `setup.php`, and provides your live public URL!
+
+*(Optional: To connect an external MySQL database on Render, simply add `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` under the **Environment** tab in your Render dashboard).*
+
 ## MVC map
 
 - `app/Controllers/` handles requests and selects responses.

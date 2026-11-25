@@ -27,14 +27,54 @@ if (!file_exists(__DIR__ . '/.env') && file_exists(__DIR__ . '/.env.example')) {
 }
 
 $config = require __DIR__ . '/config/database.php';
+$driver = $config['driver'] ?? 'mysql';
+$reset = in_array('--reset', $argv, true);
+$seedOnly = in_array('--seed', $argv, true);
+
+if ($driver === 'sqlite') {
+    echo "[1/4] Setting up SQLite database...\n";
+    $sqlitePath = $config['sqlite_path'];
+    $dir = dirname($sqlitePath);
+    if (!is_dir($dir)) {
+        mkdir($dir, 0777, true);
+    }
+    if ($reset && file_exists($sqlitePath)) {
+        unlink($sqlitePath);
+        echo "  [!] Reset requested: Removed old database file.\n";
+    }
+
+    $pdo = new PDO('sqlite:' . $sqlitePath, null, null, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+    ]);
+    $pdo->exec('PRAGMA foreign_keys = ON;');
+    echo "  [✓] SQLite database connected: {$sqlitePath}\n";
+
+    echo "\n[2/4] Applying schema from db/schema_sqlite.sql...\n";
+    $schemaFile = __DIR__ . '/db/schema_sqlite.sql';
+    if (file_exists($schemaFile)) {
+        $pdo->exec(file_get_contents($schemaFile));
+        echo "  [✓] Schema applied successfully.\n";
+    }
+
+    echo "\n[3/4] Seeding accounts and demo data...\n";
+    require_once __DIR__ . '/db/seed.php';
+    App\Database\seedDatabase();
+
+    echo "\n[4/4] Done!\n";
+    echo "===================================================\n";
+    echo "        🎉 StudyPlanner Setup Complete (SQLite)!    \n";
+    echo "===================================================\n";
+    exit(0);
+}
+
+// MySQL Setup
 $host = $config['host'];
 $port = (int) $config['port'];
 $database = $config['database'];
 $username = $config['username'];
 $password = $config['password'];
-
-$reset = in_array('--reset', $argv, true);
-$seedOnly = in_array('--seed', $argv, true);
 
 echo "[1/5] Connecting to MySQL server at {$host}:{$port}...\n";
 
@@ -49,7 +89,7 @@ function isPortOpen(string $host, int $port, float $timeout = 1.0): bool {
 }
 
 // Attempt to start local MariaDB/MySQL if port 3306 is not open on Windows
-if (!isPortOpen($host, $port)) {
+if (!isPortOpen($host, $port) && PHP_OS_FAMILY === 'Windows') {
     echo "  [!] Server not listening on {$host}:{$port}. Attempting to start local MariaDB...\n";
     $candidates = [
         'C:\Program Files\MariaDB 13.0\bin\mysqld.exe',
@@ -94,6 +134,26 @@ try {
     );
     echo "  [✓] Connected to MySQL/MariaDB server successfully.\n";
 } catch (PDOException $e) {
+    // If in cloud environment without MySQL, fallback to SQLite
+    if (PHP_OS_FAMILY !== 'Windows' || getenv('RENDER') || getenv('PORT')) {
+        echo "  [!] MySQL connection refused. Auto-configuring SQLite for cloud container...\n";
+        $sqlitePath = $config['sqlite_path'];
+        $dir = dirname($sqlitePath);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0777, true);
+        }
+        $pdo = new PDO('sqlite:' . $sqlitePath, null, null, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        ]);
+        $pdo->exec('PRAGMA foreign_keys = ON;');
+        $pdo->exec(file_get_contents(__DIR__ . '/db/schema_sqlite.sql'));
+        require_once __DIR__ . '/db/seed.php';
+        App\Database\seedDatabase();
+        echo "  [✓] Cloud SQLite database created and seeded.\n";
+        exit(0);
+    }
+
     fwrite(STDERR, "\n[ERROR] Could not connect to MySQL server:\n" . $e->getMessage() . "\n");
     fwrite(STDERR, "Please verify that MySQL or MariaDB is running on {$host}:{$port}.\n");
     exit(1);
@@ -145,7 +205,6 @@ if (is_dir($migrationsDir)) {
             $pdo->exec($migrationSql);
             echo "  [✓] Applied migration: {$filename}\n";
         } catch (PDOException $e) {
-            // Ignore errors if columns or tables already exist
             if (str_contains($e->getMessage(), 'Duplicate') || str_contains($e->getMessage(), 'already exists')) {
                 echo "  [.] Already up to date: {$filename}\n";
             } else {
