@@ -22,4 +22,6 @@ chmod -R 775 /var/www/html/storage
 php /var/www/html/setup.php || echo "Database setup notice: proceeding to start server."
 
 # Execute Apache in foreground
+chown -R www-data:www-data /var/www/html/storage
+chmod -R 775 /var/www/html/storage
 exec apache2-foreground
